@@ -2,7 +2,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, MessageSquare } from 'lucide-react';
+import { LogOut, MessageSquare, Sparkles } from 'lucide-react';
 
 export default function HomePage() {
   const { user, clearAuth } = useAuthStore();
@@ -11,6 +11,10 @@ export default function HomePage() {
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
+  };
+
+  const handleStartChat = () => {
+    navigate('/chat');
   };
 
   return (
@@ -32,17 +36,25 @@ export default function HomePage() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
+              <Sparkles className="h-5 w-5" />
               AI 대화 시작하기
             </CardTitle>
             <CardDescription>
               프롬프트를 입력하여 AI와 대화를 시작하세요
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-center text-muted-foreground py-8">
-              AI 대화 기능은 곧 추가될 예정입니다.
+          <CardContent className="space-y-4">
+            <p className="text-center text-muted-foreground py-4">
+              OpenAI GPT 모델을 사용하여 실시간으로 AI와 대화할 수 있습니다.
             </p>
+            <Button 
+              onClick={handleStartChat} 
+              className="w-full"
+              size="lg"
+            >
+              <MessageSquare className="mr-2 h-5 w-5" />
+              채팅 시작하기
+            </Button>
           </CardContent>
         </Card>
       </div>
