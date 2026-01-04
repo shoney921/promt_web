@@ -49,5 +49,23 @@ services:
     depends_on:
       - backend
 
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_prompt_backend_test
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ai_prompt_db
+      SECRET_KEY: ${SECRET_KEY:-test-secret-key}
+      OPENAI_API_KEY: ${OPEN_AI_KEY:-test-key}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && pytest tests/ -v --tb=short"
+    profiles:
+      - test
+
 volumes:
   postgres_data:

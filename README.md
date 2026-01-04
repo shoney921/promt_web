@@ -85,6 +85,72 @@ npm install
 npm run dev
 ```
 
+### 테스트 실행
+
+백엔드 테스트를 실행하려면:
+
+```bash
+cd backend
+pip install -r requirements.txt  # pytest 등 테스트 의존성 설치
+pytest tests/ -v
+```
+
+또는 테스트 스크립트 사용:
+
+```bash
+cd backend
+./run_tests.sh
+```
+
+#### 테스트 구조
+
+- `tests/test_auth.py`: 인증 엔드포인트 테스트 (회원가입, 로그인)
+- `tests/test_prompt.py`: 프롬프트 엔드포인트 테스트 (completion, chat)
+- `tests/test_openai_service.py`: OpenAI 서비스 단위 테스트
+- `tests/conftest.py`: 테스트 픽스처 및 설정
+
+#### 도커 컨테이너 내에서 테스트 실행
+
+**방법 1: 테스트 전용 컨테이너 사용 (권장)**
+
+```bash
+# 프로젝트 루트에서
+docker-compose --profile test run --rm backend-test
+```
+
+**방법 2: 실행 중인 백엔드 컨테이너에서 테스트**
+
+```bash
+# 백엔드 컨테이너가 실행 중인 경우
+docker exec ai_prompt_backend pytest tests/ -v
+
+# 특정 테스트 파일만 실행
+docker exec ai_prompt_backend pytest tests/test_prompt.py -v
+
+# 특정 테스트 함수만 실행
+docker exec ai_prompt_backend pytest tests/test_prompt.py::TestPromptEndpoints::test_completion_success -v
+```
+
+**방법 3: 테스트 스크립트 사용**
+
+```bash
+# 프로젝트 루트에서
+cd backend
+./docker-test.sh
+
+# 옵션 사용
+./docker-test.sh -f test_prompt.py -v          # 특정 파일 테스트
+./docker-test.sh -k test_completion -v         # 키워드로 테스트 필터링
+./docker-test.sh -f test_prompt.py -k success  # 파일과 키워드 조합
+```
+
+**방법 4: docker-compose exec 사용**
+
+```bash
+# 백엔드 서비스가 실행 중일 때
+docker-compose exec backend pytest tests/ -v
+```
+
 ## 기술 스택
 
 ### Backend
