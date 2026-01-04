@@ -30,13 +30,27 @@ class OpenAIService:
         if not is_valid_model(model):
             raise ValueError(f"지원하지 않는 모델입니다: {model}. 사용 가능한 모델: {', '.join(AVAILABLE_MODELS)}")
         
-        return ChatOpenAI(
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            streaming=streaming,
-            openai_api_key=self.api_key,
-        )
+        # o1, o3 시리즈는 max_completion_tokens 사용, 다른 모델은 max_tokens 사용
+        # Reasoning 모델(o1, o3)은 temperature를 지원하지 않음
+        is_reasoning_model = model.startswith("o1") or model.startswith("o3") or model.startswith("gpt-5")
+        
+        llm_kwargs = {
+            "model": model,
+            "streaming": streaming,
+            "openai_api_key": self.api_key,
+        }
+        
+        # Reasoning 모델은 temperature를 지원하지 않음
+        if not is_reasoning_model:
+            llm_kwargs["temperature"] = temperature
+        
+        # Reasoning 모델(o1, o3)은 max_completion_tokens 사용
+        if is_reasoning_model:
+            llm_kwargs["max_completion_tokens"] = max_tokens
+        else:
+            llm_kwargs["max_tokens"] = max_tokens
+        
+        return ChatOpenAI(**llm_kwargs)
     
     def _convert_messages(self, messages: List[dict]) -> List[BaseMessage]:
         """메시지 딕셔너리를 Langchain 메시지 객체로 변환"""

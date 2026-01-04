@@ -2,13 +2,42 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
 
+export interface SelectOption {
+  value: string;
+  label: string;
+  group?: string;
+  disabled?: boolean;
+}
+
 export interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  options: { value: string; label: string }[];
+  extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+  options: SelectOption[];
 }
 
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, options, ...props }, ref) => {
+    // 옵션을 그룹별로 분류
+    const groupedOptions = React.useMemo(() => {
+      const groups: Record<string, SelectOption[]> = {};
+      const ungrouped: SelectOption[] = [];
+
+      options.forEach((option) => {
+        if (option.value.startsWith('__category__')) {
+          // 카테고리 헤더는 disabled로 처리
+          ungrouped.push({ ...option, disabled: true });
+        } else if (option.group) {
+          if (!groups[option.group]) {
+            groups[option.group] = [];
+          }
+          groups[option.group].push(option);
+        } else {
+          ungrouped.push(option);
+        }
+      });
+
+      return { groups, ungrouped };
+    }, [options]);
+
     return (
       <div className="relative">
         <select
@@ -19,8 +48,25 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           {...props}
         >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
+          {Object.entries(groupedOptions.groups).map(([groupName, groupOptions]) => (
+            <optgroup key={groupName} label={groupName}>
+              {groupOptions.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                  disabled={option.disabled}
+                >
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          {groupedOptions.ungrouped.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled || option.value.startsWith('__category__')}
+            >
               {option.label}
             </option>
           ))}
