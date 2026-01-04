@@ -2,6 +2,7 @@ from typing import AsyncIterator, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from app.core.config import settings
+from app.constants.models import DEFAULT_MODEL, is_valid_model, AVAILABLE_MODELS
 import json
 
 
@@ -15,12 +16,20 @@ class OpenAIService:
     
     def _create_llm(
         self,
-        model: str = "gpt-4o-mini",
+        model: str = None,
         temperature: float = 0.7,
         max_tokens: int = 1000,
         streaming: bool = False
     ) -> ChatOpenAI:
         """Langchain ChatOpenAI 인스턴스 생성"""
+        # 모델이 제공되지 않으면 기본 모델 사용
+        if model is None:
+            model = DEFAULT_MODEL
+        
+        # 모델 검증
+        if not is_valid_model(model):
+            raise ValueError(f"지원하지 않는 모델입니다: {model}. 사용 가능한 모델: {', '.join(AVAILABLE_MODELS)}")
+        
         return ChatOpenAI(
             model=model,
             temperature=temperature,
@@ -48,7 +57,7 @@ class OpenAIService:
     async def get_completion(
         self,
         message: str,
-        model: str = "gpt-4o-mini",
+        model: str = None,
         temperature: float = 0.7,
         max_tokens: int = 1000
     ) -> dict:
@@ -78,7 +87,7 @@ class OpenAIService:
     async def get_chat_completion(
         self,
         messages: List[dict],
-        model: str = "gpt-4o-mini",
+        model: str = None,
         temperature: float = 0.7,
         max_tokens: int = 1000
     ) -> dict:
@@ -110,7 +119,7 @@ class OpenAIService:
     async def stream_completion(
         self,
         message: str,
-        model: str = "gpt-4o-mini",
+        model: str = None,
         temperature: float = 0.7,
         max_tokens: int = 1000
     ) -> AsyncIterator[str]:
@@ -132,7 +141,7 @@ class OpenAIService:
     async def stream_chat_completion(
         self,
         messages: List[dict],
-        model: str = "gpt-4o-mini",
+        model: str = None,
         temperature: float = 0.7,
         max_tokens: int = 1000
     ) -> AsyncIterator[str]:

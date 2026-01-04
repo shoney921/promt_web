@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api';
 import { PromptRequest, PromptResponse, ChatRequest, ChatMessage } from '@/types/prompt';
+import { DEFAULT_MODEL } from '@/constants/models';
 
 export const promptService = {
   /**
@@ -8,7 +9,7 @@ export const promptService = {
   async getCompletion(request: PromptRequest): Promise<PromptResponse> {
     const response = await apiClient.post<PromptResponse>('/prompt/completion', {
       message: request.message,
-      model: request.model || 'gpt-4o-mini',
+      model: request.model || DEFAULT_MODEL,
       temperature: request.temperature ?? 0.7,
       max_tokens: request.max_tokens ?? 1000,
       stream: false,
@@ -25,7 +26,7 @@ export const promptService = {
         role: msg.role,
         content: msg.content,
       })),
-      model: request.model || 'gpt-4o-mini',
+      model: request.model || DEFAULT_MODEL,
       temperature: request.temperature ?? 0.7,
       max_tokens: request.max_tokens ?? 1000,
       stream: false,
@@ -52,7 +53,7 @@ export const promptService = {
         },
         body: JSON.stringify({
           message: request.message,
-          model: request.model || 'gpt-4o-mini',
+          model: request.model || DEFAULT_MODEL,
           temperature: request.temperature ?? 0.7,
           max_tokens: request.max_tokens ?? 1000,
           stream: true,
@@ -129,7 +130,7 @@ export const promptService = {
             role: msg.role,
             content: msg.content,
           })),
-          model: request.model || 'gpt-4o-mini',
+          model: request.model || DEFAULT_MODEL,
           temperature: request.temperature ?? 0.7,
           max_tokens: request.max_tokens ?? 1000,
           stream: true,

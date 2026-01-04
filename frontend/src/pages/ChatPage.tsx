@@ -5,17 +5,29 @@ import { ChatMessage as ChatMessageType } from '@/types/prompt';
 import { promptService } from '@/services/promptService';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
+import ModelSelector from '@/components/ModelSelector';
 import { Button } from '@/components/ui/button';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { DEFAULT_MODEL } from '@/constants/models';
 
 export default function ChatPage() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    // localStorage에서 저장된 모델 불러오기
+    const saved = localStorage.getItem('selectedModel');
+    return saved || DEFAULT_MODEL;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
+
+  // 모델 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('selectedModel', selectedModel);
+  }, [selectedModel]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,7 +57,7 @@ export default function ChatPage() {
       await promptService.streamChatCompletion(
         {
           messages: chatMessages,
-          model: 'gpt-4o-mini',
+          model: selectedModel,
           temperature: 0.7,
           max_tokens: 1000,
           stream: true,
@@ -92,30 +104,39 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">AI 채팅</h1>
-            <p className="text-sm text-gray-500">
-              {user?.full_name || user?.email}님, 안녕하세요!
-            </p>
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">AI 채팅</h1>
+              <p className="text-sm text-gray-500">
+                {user?.full_name || user?.email}님, 안녕하세요!
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/')}
+              >
+                홈으로
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClear}
+                disabled={messages.length === 0 && !isStreaming}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                대화 초기화
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/')}
-            >
-              홈으로
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClear}
-              disabled={messages.length === 0 && !isStreaming}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              대화 초기화
-            </Button>
+          <div className="flex items-center">
+            <ModelSelector
+              value={selectedModel}
+              onChange={setSelectedModel}
+              disabled={isStreaming}
+            />
           </div>
         </div>
       </header>
