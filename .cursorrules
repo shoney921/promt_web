@@ -1,0 +1,54 @@
+# AI Web Project Rules (FastAPI + React + OpenAI)
+
+## 1. Project Structure & Tech Stack
+
+- **Monorepo Structure**:
+  - `/frontend`: React (Vite), TypeScript, Tailwind CSS, shadcn/ui
+  - `/backend`: FastAPI, Python 3.11+, SQLAlchemy or Tortoise ORM
+  - `/docker`: Docker Compose and Dockerfiles
+- **Auth**: JWT (JSON Web Tokens) based authentication.
+- **AI**: OpenAI API with streaming response capability.
+
+## 2. General Development Guidelines
+
+- All code must be written in **TypeScript** for frontend and **Type Hinting** for Python backend.
+- Follow **RESTful API** design principles.
+- Maintain a clean separation of concerns: Services, Models, Schemas (Pydantic), and Routes.
+
+## 3. Frontend Rules (React + Vite)
+
+- **UI Components**: Use **shadcn/ui** for all base components.
+- **Styling**: Strictly use **Tailwind CSS**. No plain CSS files.
+- **State Management**: Use **Zustand** for global state (Auth, UI toggle).
+- **Icons**: Use **Lucide-react**.
+- **Data Fetching**: Use **TanStack Query (React Query)** for server state management.
+- **Design Strategy**: When creating UI, refer to modern, clean, and minimalist AI service designs.
+
+## 4. Backend Rules (FastAPI)
+
+- **Directory Structure**:
+  - `app/api`: Endpoint routes
+  - `app/core`: Configuration, Security (JWT)
+  - `app/models`: DB models
+  - `app/schemas`: Pydantic models (Request/Response validation)
+  - `app/services`: Business logic (OpenAI integration, Auth logic)
+- **Exception Handling**: Use custom global exception handlers to return consistent JSON errors.
+- **OpenAI**: Use `AsyncOpenAI` client for non-blocking calls.
+
+## 5. Docker Rules
+
+- Use `docker-compose.yml` in the root to orchestrate `frontend`, `backend`, and `postgres`.
+- Ensure **Hot Reloading** works within Docker for both frontend (Vite) and backend (Uvicorn).
+- Use multi-stage builds for production Dockerfiles.
+
+## 6. Security & Best Practices
+
+- **NEVER** hardcode API keys. Use `.env` files for both frontend and backend.
+- Store passwords using secure hashing (e.g., passlib with bcrypt).
+- CORS configuration must be restricted to specific origins in production.
+
+## 7. Cursor Interaction Instructions
+
+- When I ask to build a feature, always provide both the backend (API) and frontend (UI) code.
+- If a shadcn/ui component is needed, tell me the command to install it (e.g., `npx shadcn-ui@latest add button`).
+- Ensure all new files follow the project's directory structure defined in Rule #1.
