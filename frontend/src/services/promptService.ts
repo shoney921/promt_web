@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/api';
+import { apiClient, API_BASE_URL } from '@/lib/api';
 import { PromptRequest, PromptResponse, ChatRequest, ChatMessage } from '@/types/prompt';
 import { DEFAULT_MODEL } from '@/constants/models';
 
@@ -45,7 +45,9 @@ export const promptService = {
   ): Promise<void> {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${apiClient.defaults.baseURL}/prompt/completion`, {
+      const url = `${API_BASE_URL}/prompt/completion`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,7 +63,8 @@ export const promptService = {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const reader = response.body?.getReader();
@@ -119,7 +122,9 @@ export const promptService = {
   ): Promise<void> {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${apiClient.defaults.baseURL}/prompt/chat`, {
+      const url = `${API_BASE_URL}/prompt/chat`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -138,7 +143,8 @@ export const promptService = {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
 
       const reader = response.body?.getReader();
