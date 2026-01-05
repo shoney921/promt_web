@@ -18,6 +18,7 @@ export interface ChatRequest {
   temperature?: number;
   max_tokens?: number;
   stream?: boolean;
+  conversation_id?: number;
 }
 
 export interface PromptResponse {

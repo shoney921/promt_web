@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChatMessage as ChatMessageType } from '@/types/prompt';
+import { Message as ConversationMessage } from '@/types/conversation';
 import { promptService } from '@/services/promptService';
+import { conversationService } from '@/services/conversationService';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import ModelSelector from '@/components/ModelSelector';
+import ConversationList from '@/components/ConversationList';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, MessageSquare, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { DEFAULT_MODEL } from '@/constants/models';
 
@@ -18,6 +21,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
+  const [showSidebar, setShowSidebar] = useState(true);
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     // localStorage에서 저장된 모델 불러오기
     const saved = localStorage.getItem('selectedModel');
@@ -29,6 +34,7 @@ export default function ChatPage() {
     return saved ? parseInt(saved, 10) : 1000;
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
   // 모델 변경 시 localStorage에 저장
@@ -48,6 +54,45 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingMessage]);
+
+  // 대화 세션 조회
+  const { data: conversation } = useQuery({
+    queryKey: ['conversation', currentConversationId],
+    queryFn: () => conversationService.getConversation(currentConversationId!),
+    enabled: !!currentConversationId,
+  });
+
+  // 대화 세션 로드 시 메시지 불러오기
+  useEffect(() => {
+    if (conversation && conversation.messages) {
+      const loadedMessages: ChatMessageType[] = conversation.messages.map((msg: ConversationMessage) => ({
+        role: msg.role as 'user' | 'assistant' | 'system',
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+      }));
+      setMessages(loadedMessages);
+      
+      // 모델과 설정도 복원
+      if (conversation.model) {
+        setSelectedModel(conversation.model);
+      }
+      if (conversation.max_tokens) {
+        setMaxTokens(conversation.max_tokens);
+      }
+    }
+  }, [conversation]);
+
+  // 대화 세션 선택 핸들러
+  const handleSelectConversation = (conversationId: number) => {
+    if (conversationId === 0) {
+      // 새 대화 시작
+      setCurrentConversationId(null);
+      setMessages([]);
+      setStreamingMessage('');
+    } else {
+      setCurrentConversationId(conversationId);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -73,12 +118,13 @@ export default function ChatPage() {
           temperature: 0.7,
           max_tokens: maxTokens,
           stream: true,
+          conversation_id: currentConversationId || undefined,
         },
         (chunk) => {
           fullResponse += chunk;
           setStreamingMessage(fullResponse);
         },
-        () => {
+        (conversationId) => {
           const assistantMessage: ChatMessageType = {
             role: 'assistant',
             content: fullResponse,
@@ -87,6 +133,14 @@ export default function ChatPage() {
           setMessages((prev) => [...prev, assistantMessage]);
           setStreamingMessage('');
           setIsStreaming(false);
+          
+          // 새로 생성된 대화 세션 ID 설정
+          if (conversationId && !currentConversationId) {
+            setCurrentConversationId(conversationId);
+          }
+          
+          // 대화 목록 새로고침
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
         },
         (error) => {
           console.error('Streaming error:', error);
@@ -110,12 +164,46 @@ export default function ChatPage() {
   const handleClear = () => {
     setMessages([]);
     setStreamingMessage('');
+    setCurrentConversationId(null);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
+      {showSidebar && (
+        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">대화 목록</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSidebar(false)}
+              className="h-8 w-8 p-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <Button
+              variant="outline"
+              className="w-full mb-4"
+              onClick={() => handleSelectConversation(0)}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              새 대화 시작
+            </Button>
+            <ConversationList
+              onSelectConversation={handleSelectConversation}
+              selectedConversationId={currentConversationId}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -125,6 +213,16 @@ export default function ChatPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              {!showSidebar && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSidebar(true)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  대화 목록
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -212,6 +310,7 @@ export default function ChatPage() {
         isLoading={isStreaming}
         disabled={mutation.isPending}
       />
+      </div>
     </div>
   );
 }

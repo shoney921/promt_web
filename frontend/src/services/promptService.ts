@@ -117,7 +117,7 @@ export const promptService = {
   async streamChatCompletion(
     request: ChatRequest,
     onChunk: (chunk: string) => void,
-    onComplete?: () => void,
+    onComplete?: (conversationId?: number) => void,
     onError?: (error: Error) => void
   ): Promise<void> {
     try {
@@ -139,6 +139,7 @@ export const promptService = {
           temperature: request.temperature ?? 0.7,
           max_tokens: request.max_tokens ?? 1000,
           stream: true,
+          conversation_id: request.conversation_id,
         }),
       });
 
@@ -155,12 +156,13 @@ export const promptService = {
       }
 
       let buffer = '';
+      let conversationId: number | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
         
         if (done) {
-          onComplete?.();
+          onComplete?.(conversationId);
           break;
         }
 
@@ -172,13 +174,16 @@ export const promptService = {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
-              onComplete?.();
+              onComplete?.(conversationId);
               return;
             }
             try {
               const parsed = JSON.parse(data);
               if (parsed.chunk) {
                 onChunk(parsed.chunk);
+              } else if (parsed.conversation_id) {
+                // conversation_id가 포함된 경우 저장
+                conversationId = parsed.conversation_id;
               }
             } catch (e) {
               // JSON 파싱 실패 무시

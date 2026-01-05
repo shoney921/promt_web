@@ -28,6 +28,7 @@ class PromptResponse(BaseModel):
     response: str = Field(..., description="AI 응답")
     model: str = Field(..., description="사용된 모델")
     usage: Optional[dict] = Field(default=None, description="토큰 사용량 정보")
+    conversation_id: Optional[int] = Field(default=None, description="대화 세션 ID")
 
 
 class ChatMessage(BaseModel):
@@ -43,6 +44,7 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.7, ge=0.0, le=2.0, description="온도 설정 (0.0-2.0)")
     max_tokens: Optional[int] = Field(default=1000, ge=1, description="최대 토큰 수")
     stream: Optional[bool] = Field(default=False, description="스트리밍 응답 여부")
+    conversation_id: Optional[int] = Field(default=None, description="대화 세션 ID (기존 대화 이어가기)")
     
     @field_validator('model')
     @classmethod
