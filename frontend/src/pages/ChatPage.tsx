@@ -7,6 +7,8 @@ import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import ModelSelector from '@/components/ModelSelector';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Trash2, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { DEFAULT_MODEL } from '@/constants/models';
@@ -21,6 +23,11 @@ export default function ChatPage() {
     const saved = localStorage.getItem('selectedModel');
     return saved || DEFAULT_MODEL;
   });
+  const [maxTokens, setMaxTokens] = useState<number>(() => {
+    // localStorage에서 저장된 max_tokens 불러오기
+    const saved = localStorage.getItem('maxTokens');
+    return saved ? parseInt(saved, 10) : 1000;
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
 
@@ -28,6 +35,11 @@ export default function ChatPage() {
   useEffect(() => {
     localStorage.setItem('selectedModel', selectedModel);
   }, [selectedModel]);
+
+  // max_tokens 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('maxTokens', maxTokens.toString());
+  }, [maxTokens]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -59,7 +71,7 @@ export default function ChatPage() {
           messages: chatMessages,
           model: selectedModel,
           temperature: 0.7,
-          max_tokens: 1000,
+          max_tokens: maxTokens,
           stream: true,
         },
         (chunk) => {
@@ -131,12 +143,31 @@ export default function ChatPage() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
             <ModelSelector
               value={selectedModel}
               onChange={setSelectedModel}
               disabled={isStreaming}
             />
+            <div className="flex items-center gap-2">
+              <Label htmlFor="max-tokens" className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                최대 토큰
+              </Label>
+              <Input
+                id="max-tokens"
+                type="number"
+                min="1"
+                value={maxTokens}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value, 10);
+                  if (!isNaN(value) && value >= 1) {
+                    setMaxTokens(value);
+                  }
+                }}
+                disabled={isStreaming}
+                className="w-24 text-sm"
+              />
+            </div>
           </div>
         </div>
       </header>
