@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # OpenAI - OPEN_AI_KEY 환경 변수도 지원
     OPENAI_API_KEY: str = ""
     
+    # Tavily Search API (선택적 - 없어도 검색 기능 비활성화)
+    TAVILY_API_KEY: str = ""
+    
     # CORS
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

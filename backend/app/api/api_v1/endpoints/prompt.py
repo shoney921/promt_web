@@ -134,7 +134,8 @@ async def get_chat_completion(
                     messages=messages,
                     model=request.model,
                     temperature=request.temperature,
-                    max_tokens=request.max_tokens
+                    max_tokens=request.max_tokens,
+                    use_search=request.use_search
                 ):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
@@ -167,7 +168,8 @@ async def get_chat_completion(
                 messages=messages,
                 model=request.model,
                 temperature=request.temperature,
-                max_tokens=request.max_tokens
+                max_tokens=request.max_tokens,
+                use_search=request.use_search
             )
             
             # AI 응답 메시지 저장

@@ -32,7 +32,14 @@ FastAPI + React + OpenAI를 사용한 AI 프롬프트 대화 웹 애플리케이
 ```env
 SECRET_KEY=your-secret-key-change-in-production-use-a-secure-random-string
 OPEN_AI_KEY=your-openai-api-key-here
+TAVILY_API_KEY=your-tavily-api-key-here  # 선택적: 웹 검색 기능 사용 시 필요
 ```
+
+**Tavily API Key 발급 방법:**
+1. [Tavily 웹사이트](https://tavily.com)에 가입
+2. 무료 티어로 시작 가능 (월 1,000회 검색)
+3. API Key를 발급받아 `.env` 파일에 추가
+4. API Key가 없어도 기본 AI 기능은 정상 작동 (검색 기능만 비활성화)
 
 ### 2. Docker Compose로 실행
 
@@ -60,12 +67,11 @@ docker-compose up --build
 - ✅ 사용자 로그인
 - ✅ JWT 기반 인증
 - ✅ 보호된 라우트
-
-### 예정된 기능
-
-- ⏳ AI 프롬프트 대화
-- ⏳ 대화 기록 관리
-- ⏳ 프롬프트 템플릿
+- ✅ AI 프롬프트 대화 (스트리밍 지원)
+- ✅ 대화 기록 관리
+- ✅ 웹 검색 기능 (Tavily Search 통합)
+  - LLM이 필요할 때 자동으로 웹 검색 수행
+  - 최신 정보 및 실시간 데이터 검색 지원
 
 ## 개발
 
@@ -160,6 +166,8 @@ docker-compose exec backend pytest tests/ -v
 - PostgreSQL
 - JWT (python-jose)
 - Alembic (마이그레이션)
+- Langchain (OpenAI 통합, Agent)
+- Tavily Search (웹 검색)
 
 ### Frontend
 
