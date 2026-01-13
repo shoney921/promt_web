@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose ps:*)",
+      "Bash(python -m pytest tests/test_prompt.py tests/test_openai_service.py -v)",
+      "Bash(python -c:*)"
+    ]
+  }
+}
