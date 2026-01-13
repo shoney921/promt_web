@@ -1,6 +1,10 @@
 import { ChatMessage as ChatMessageType } from '@/types/prompt';
 import { User, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -39,7 +43,48 @@ export default function ChatMessage({ message }: ChatMessageProps) {
               : 'bg-white border border-gray-200 text-gray-900'
           )}
         >
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          {isAssistant ? (
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal list-inside mb-2">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                  code: ({ inline, children, ...props }: any) => 
+                    inline ? (
+                      <code className="bg-gray-100 text-red-600 px-1 py-0.5 rounded text-sm" {...props}>
+                        {children}
+                      </code>
+                    ) : (
+                      <code className="block bg-gray-900 text-gray-100 p-3 rounded my-2 overflow-x-auto" {...props}>
+                        {children}
+                      </code>
+                    ),
+                  pre: ({ children }) => <pre className="my-2">{children}</pre>,
+                  h1: ({ children }) => <h1 className="text-2xl font-bold mb-2">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-xl font-bold mb-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2">
+                      {children}
+                    </blockquote>
+                  ),
+                  a: ({ children, href }) => (
+                    <a href={href} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          )}
         </div>
         {message.timestamp && (
           <span className="text-xs text-gray-500 mt-1">
