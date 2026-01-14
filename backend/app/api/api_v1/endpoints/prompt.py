@@ -267,6 +267,10 @@ async def _handle_streaming_chat(
     async def generate_stream():
         nonlocal full_response
 
+        # 검색 사용 여부 표시 (검색 기능이 활성화된 경우)
+        if request.use_search:
+            yield f"data: {json.dumps({'used_search': True}, ensure_ascii=False)}\n\n"
+
         # AI 응답 스트리밍
         async for chunk in openai_service.stream_chat_completion(
             messages=messages,

@@ -30,6 +30,7 @@ class PromptResponse(BaseModel):
     model: str = Field(..., description="사용된 모델")
     usage: Optional[dict] = Field(default=None, description="토큰 사용량 정보")
     conversation_id: Optional[int] = Field(default=None, description="대화 세션 ID")
+    used_search: Optional[bool] = Field(default=False, description="웹 검색 기능 사용 여부")
 
 
 class ChatMessage(BaseModel):

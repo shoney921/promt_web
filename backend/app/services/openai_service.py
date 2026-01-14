@@ -5,12 +5,15 @@ Langchain을 사용하여 OpenAI API와 상호작용하는 서비스입니다.
 단일 프롬프트 완성, 채팅 완성, 스트리밍 응답을 지원합니다.
 """
 
+import logging
 from typing import AsyncIterator, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 from app.constants.models import DEFAULT_MODEL, is_valid_model, AVAILABLE_MODELS
 from app.services.search_service import search_service
 
@@ -475,6 +478,8 @@ class OpenAIService:
         tools: list
     ) -> dict:
         """Agent를 실행하여 응답을 생성합니다."""
+        logger.info("[Agent] 검색 Agent 실행 시작")
+
         llm = self._create_llm(
             model=model,
             temperature=temperature,
@@ -498,18 +503,22 @@ class OpenAIService:
             raise ValueError("사용자 메시지를 찾을 수 없습니다.")
 
         chat_history = build_chat_history(messages)
+        logger.info(f"[Agent] 사용자 질문: {last_user_message[:100]}...")
 
         try:
             result = await agent_executor.ainvoke({
                 "input": last_user_message,
                 "chat_history": chat_history
             })
+            logger.info("[Agent] 검색 Agent 실행 완료")
             return {
                 "response": result.get("output", ""),
                 "model": model,
-                "usage": None  # Agent 사용 시 토큰 사용량 추적이 복잡하므로 None
+                "usage": None,  # Agent 사용 시 토큰 사용량 추적이 복잡하므로 None
+                "used_search": True  # 검색 사용 여부 표시
             }
         except Exception as e:
+            logger.error(f"[Agent] Agent 실행 중 오류 발생: {str(e)}")
             raise Exception(f"Agent 실행 중 오류 발생: {str(e)}")
 
     async def _get_chat_with_manual_search(
@@ -520,6 +529,8 @@ class OpenAIService:
         max_tokens: int
     ) -> dict:
         """수동 검색을 포함한 채팅 완성 (Agent가 없는 경우 폴백)"""
+        logger.info("[수동검색] 수동 검색 모드로 실행")
+
         last_user_message = find_last_user_message_content(messages)
         if not last_user_message:
             raise ValueError("사용자 메시지를 찾을 수 없습니다.")
@@ -527,16 +538,21 @@ class OpenAIService:
         # 검색 수행
         search_results = await search_service.search(last_user_message)
         search_context = format_search_results(search_results)
+        used_search = bool(search_results)
+
+        logger.info(f"[수동검색] 검색 결과 {len(search_results)}개 반환, 컨텍스트 주입: {used_search}")
 
         # 검색 결과를 메시지에 추가
         enhanced_messages = self._inject_search_context(messages, search_context)
 
-        return await self._get_chat_basic(
+        result = await self._get_chat_basic(
             messages=enhanced_messages,
             model=model,
             temperature=temperature,
             max_tokens=max_tokens
         )
+        result["used_search"] = used_search
+        return result
 
     def _inject_search_context(
         self,

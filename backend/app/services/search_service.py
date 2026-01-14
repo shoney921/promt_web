@@ -45,17 +45,19 @@ class SearchService:
     async def search(self, query: str) -> List[Dict]:
         """
         직접 검색 실행 (비동기)
-        
+
         Args:
             query: 검색 쿼리
-            
+
         Returns:
             검색 결과 리스트
         """
         if not self.is_enabled or not self.search_tool:
+            logger.info(f"[검색 스킵] 검색 기능 비활성화 상태 - 쿼리: {query[:50]}...")
             return []
-        
+
         try:
+            logger.info(f"[검색 시작] Tavily 검색 실행 - 쿼리: {query}")
             # Tavily Search는 동기 함수이므로 run_in_executor 사용
             import asyncio
             loop = asyncio.get_event_loop()
@@ -64,9 +66,14 @@ class SearchService:
                 self.search_tool.invoke,
                 query
             )
-            return results if isinstance(results, list) else []
+            result_list = results if isinstance(results, list) else []
+            logger.info(f"[검색 완료] {len(result_list)}개의 결과 반환")
+            for i, result in enumerate(result_list[:3], 1):
+                url = result.get("url", "N/A")
+                logger.info(f"  결과 {i}: {url}")
+            return result_list
         except Exception as e:
-            logger.error(f"검색 실행 중 오류 발생: {str(e)}")
+            logger.error(f"[검색 오류] 검색 실행 중 오류 발생: {str(e)}")
             return []
 
 
