@@ -117,7 +117,7 @@ export const promptService = {
   async streamChatCompletion(
     request: ChatRequest,
     onChunk: (chunk: string) => void,
-    onComplete?: (conversationId?: number) => void,
+    onComplete?: (conversationId?: number, usedSearch?: boolean) => void,
     onError?: (error: Error) => void
   ): Promise<void> {
     try {
@@ -140,6 +140,7 @@ export const promptService = {
           max_tokens: request.max_tokens ?? 1000,
           stream: true,
           conversation_id: request.conversation_id,
+          use_search: request.use_search ?? false,
         }),
       });
 
@@ -157,12 +158,13 @@ export const promptService = {
 
       let buffer = '';
       let conversationId: number | undefined;
+      let usedSearch = false;
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
-          onComplete?.(conversationId);
+          onComplete?.(conversationId, usedSearch);
           break;
         }
 
@@ -174,7 +176,7 @@ export const promptService = {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
-              onComplete?.(conversationId);
+              onComplete?.(conversationId, usedSearch);
               return;
             }
             try {
@@ -184,6 +186,9 @@ export const promptService = {
               } else if (parsed.conversation_id) {
                 // conversation_id가 포함된 경우 저장
                 conversationId = parsed.conversation_id;
+              } else if (parsed.used_search) {
+                // 검색 도구 사용 여부 저장
+                usedSearch = true;
               }
             } catch (e) {
               // JSON 파싱 실패 무시

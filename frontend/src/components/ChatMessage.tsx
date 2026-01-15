@@ -1,5 +1,5 @@
 import { ChatMessage as ChatMessageType } from '@/types/prompt';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -86,11 +86,19 @@ export default function ChatMessage({ message }: ChatMessageProps) {
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           )}
         </div>
-        {message.timestamp && (
-          <span className="text-xs text-gray-500 mt-1">
-            {new Date(message.timestamp).toLocaleTimeString()}
-          </span>
-        )}
+        <div className="flex items-center gap-2 mt-1">
+          {message.usedSearch && isAssistant && (
+            <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              <Search className="w-3 h-3" />
+              웹 검색 사용
+            </span>
+          )}
+          {message.timestamp && (
+            <span className="text-xs text-gray-500">
+              {new Date(message.timestamp).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
       </div>
 
       {isUser && (

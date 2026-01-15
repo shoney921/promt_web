@@ -12,7 +12,7 @@ import ConversationList from '@/components/ConversationList';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Loader2, MessageSquare, X } from 'lucide-react';
+import { Trash2, Loader2, MessageSquare, X, Search } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { DEFAULT_MODEL } from '@/constants/models';
 
@@ -33,6 +33,11 @@ export default function ChatPage() {
     const saved = localStorage.getItem('maxTokens');
     return saved ? parseInt(saved, 10) : 1000;
   });
+  const [useSearch, setUseSearch] = useState<boolean>(() => {
+    // localStorage에서 저장된 useSearch 불러오기
+    const saved = localStorage.getItem('useSearch');
+    return saved === 'true';
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -46,6 +51,11 @@ export default function ChatPage() {
   useEffect(() => {
     localStorage.setItem('maxTokens', maxTokens.toString());
   }, [maxTokens]);
+
+  // useSearch 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem('useSearch', useSearch.toString());
+  }, [useSearch]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,26 +129,28 @@ export default function ChatPage() {
           max_tokens: maxTokens,
           stream: true,
           conversation_id: currentConversationId || undefined,
+          use_search: useSearch,
         },
         (chunk) => {
           fullResponse += chunk;
           setStreamingMessage(fullResponse);
         },
-        (conversationId) => {
+        (conversationId, usedSearch) => {
           const assistantMessage: ChatMessageType = {
             role: 'assistant',
             content: fullResponse,
             timestamp: new Date(),
+            usedSearch: usedSearch,
           };
           setMessages((prev) => [...prev, assistantMessage]);
           setStreamingMessage('');
           setIsStreaming(false);
-          
+
           // 새로 생성된 대화 세션 ID 설정
           if (conversationId && !currentConversationId) {
             setCurrentConversationId(conversationId);
           }
-          
+
           // 대화 목록 새로고침
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
         },
@@ -266,6 +278,16 @@ export default function ChatPage() {
                 className="w-24 text-sm"
               />
             </div>
+            <Button
+              variant={useSearch ? "default" : "outline"}
+              size="sm"
+              onClick={() => setUseSearch(!useSearch)}
+              disabled={isStreaming}
+              className={useSearch ? "bg-blue-500 hover:bg-blue-600" : ""}
+            >
+              <Search className="w-4 h-4 mr-1" />
+              웹 검색
+            </Button>
           </div>
         </div>
       </header>

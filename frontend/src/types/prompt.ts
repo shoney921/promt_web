@@ -2,6 +2,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp?: Date;
+  usedSearch?: boolean;
 }
 
 export interface PromptRequest {
@@ -19,6 +20,7 @@ export interface ChatRequest {
   max_tokens?: number;
   stream?: boolean;
   conversation_id?: number;
+  use_search?: boolean;
 }
 
 export interface PromptResponse {
