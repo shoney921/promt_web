@@ -36,6 +36,7 @@ TAVILY_API_KEY=your-tavily-api-key-here  # 선택적: 웹 검색 기능 사용 �
 ```
 
 **Tavily API Key 발급 방법:**
+
 1. [Tavily 웹사이트](https://tavily.com)에 가입
 2. 무료 티어로 시작 가능 (월 1,000회 검색)
 3. API Key를 발급받아 `.env` 파일에 추가
@@ -178,3 +179,157 @@ docker-compose exec backend pytest tests/ -v
 - Zustand
 - TanStack Query
 - React Router
+
+---
+
+## 프로덕션 인프라
+
+### 아키텍처 개요
+
+로컬 PC에서 Docker로 서비스를 실행하고, Cloudflare Tunnel을 통해 외부에서 접속할 수 있습니다.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              인터넷                                      │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     Cloudflare Edge Network                              │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  prompt.shoneylife.com                                           │    │
+│  │  • SSL/TLS 종료 (자동 인증서)                                     │    │
+│  │  • DDoS 보호                                                      │    │
+│  │  • CDN 캐싱                                                       │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+└────────────────────────────────┬────────────────────────────────────────┘
+                                 │ Cloudflare Tunnel (암호화)
+                                 ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        로컬 PC (Docker)                                  │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    Docker Network: internal                       │   │
+│  │                                                                   │   │
+│  │   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐        │   │
+│  │   │ cloudflared │────►│   nginx     │────►│  backend    │        │   │
+│  │   │             │     │   :80       │     │   :8000     │        │   │
+│  │   └─────────────┘     └──────┬──────┘     └──────┬──────┘        │   │
+│  │                              │                    │               │   │
+│  │                              │                    ▼               │   │
+│  │                              │            ┌─────────────┐        │   │
+│  │                              │            │  postgres   │        │   │
+│  │                              │            │   :5432     │        │   │
+│  │                              │            └─────────────┘        │   │
+│  │                              │                                   │   │
+│  │                              ▼                                   │   │
+│  │                       정적 파일 서빙                              │   │
+│  │                    (React 빌드 결과물)                            │   │
+│  │                                                                   │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│  호스트 노출 포트: 80 (nginx)                                            │
+│  외부 미노출: postgres (5432), backend (8000)                            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 네트워크 흐름 상세
+
+```
+요청 흐름 (외부 → 내부)
+═══════════════════════════════════════════════════════════════════════════
+
+1. 사용자 브라우저
+   │
+   │  HTTPS 요청: https://prompt.shoneylife.com/api/v1/chat
+   ▼
+2. Cloudflare Edge (서울 PoP)
+   │  • SSL 종료
+   │  • 보안 검사
+   │  • 요청을 Tunnel로 전달
+   ▼
+3. cloudflared 컨테이너
+   │  • Cloudflare와 암호화된 연결 유지
+   │  • 요청을 nginx:80으로 프록시
+   ▼
+4. nginx 컨테이너 (:80)
+   │  • 경로 기반 라우팅:
+   │    - /api/*  → backend:8000
+   │    - /health → backend:8000/health
+   │    - /*      → 정적 파일 (React)
+   ▼
+5. backend 컨테이너 (:8000)
+   │  • FastAPI 처리
+   │  • OpenAI API 호출
+   ▼
+6. postgres 컨테이너 (:5432)
+      • 데이터 저장/조회
+```
+
+### 컨테이너별 역할
+
+| 컨테이너 | 이미지 | 내부 포트 | 호스트 포트 | 역할 |
+|---------|--------|----------|------------|------|
+| **postgres** | postgres:15-alpine | 5432 | - (미노출) | PostgreSQL 데이터베이스 |
+| **backend** | Dockerfile.prod | 8000 | - (미노출) | FastAPI 서버 (4 workers) |
+| **nginx** | Dockerfile.prod | 80 | 80 | 리버스 프록시 + 정적 파일 |
+| **cloudflared** | cloudflare/cloudflared | - | - | Cloudflare Tunnel 클라이언트 |
+
+### Nginx 라우팅 규칙
+
+```
+location /api/         → proxy_pass http://backend:8000
+location /health       → proxy_pass http://backend:8000/health
+location /docs         → proxy_pass http://backend:8000/docs
+location /openapi.json → proxy_pass http://backend:8000/openapi.json
+location /             → React 정적 파일 (SPA 라우팅)
+```
+
+### 프로덕션 실행
+
+```bash
+# 1. 환경변수 설정
+cp .env.example .env.production
+# .env.production 파일에서 API 키와 토큰 설정
+
+# 2. 프로덕션 실행
+docker-compose -f docker-compose.prod.yml --env-file .env.production up --build -d
+
+# 3. 상태 확인
+docker-compose -f docker-compose.prod.yml --env-file .env.production ps
+
+# 4. 로그 확인
+docker-compose -f docker-compose.prod.yml --env-file .env.production logs -f
+
+# 5. 중지
+docker-compose -f docker-compose.prod.yml --env-file .env.production down
+```
+
+### 접속 URL
+
+| 환경 | URL |
+|------|-----|
+| 프로덕션 (외부) | https://prompt.shoneylife.com |
+| 로컬 테스트 | http://localhost |
+| API 문서 | https://prompt.shoneylife.com/docs |
+| 헬스체크 | https://prompt.shoneylife.com/health |
+
+### Cloudflare Tunnel 설정 요약
+
+1. **Cloudflare Zero Trust** 접속: https://one.dash.cloudflare.com
+2. **Networks > Tunnels** 에서 Tunnel 생성
+3. 생성된 **토큰**을 `.env.production`의 `CLOUDFLARE_TUNNEL_TOKEN`에 설정
+4. **Public Hostname** 설정:
+   - Subdomain: `prompt`
+   - Domain: `shoneylife.com`
+   - Service: `http://nginx:80`
+
+### 보안 고려사항
+
+- ✅ PostgreSQL 외부 미노출 (Docker 내부 네트워크만)
+- ✅ Backend 직접 접근 불가 (nginx 프록시 경유)
+- ✅ SSL/TLS Cloudflare에서 자동 관리
+- ✅ DDoS 보호 기본 제공
+- ✅ 로컬 PC IP 주소 미노출
+- ⚠️ `.env.production`은 반드시 `.gitignore`에 포함
+
+상세 설정 가이드: [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md)
