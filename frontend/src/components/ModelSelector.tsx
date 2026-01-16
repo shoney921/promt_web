@@ -1,5 +1,5 @@
 import { Select } from './ui/select';
-import { AVAILABLE_MODELS, DEFAULT_MODEL, MODELS_BY_CATEGORY, CATEGORY_LABELS } from '@/constants/models';
+import { AVAILABLE_MODELS, MODELS_BY_CATEGORY, CATEGORY_LABELS } from '@/constants/models';
 import { Settings, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';

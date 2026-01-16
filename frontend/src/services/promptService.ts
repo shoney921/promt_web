@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from '@/lib/api';
-import { PromptRequest, PromptResponse, ChatRequest, ChatMessage } from '@/types/prompt';
+import { PromptRequest, PromptResponse, ChatRequest } from '@/types/prompt';
 import { DEFAULT_MODEL } from '@/constants/models';
 
 export const promptService = {

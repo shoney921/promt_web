@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { conversationService } from '@/services/conversationService';
-import { ConversationListItem } from '@/types/conversation';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Trash2, MessageSquare, Clock } from 'lucide-react';

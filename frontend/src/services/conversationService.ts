@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api';
-import { Conversation, ConversationListItem, ConversationCreate, Message } from '@/types/conversation';
+import { Conversation, ConversationListItem, ConversationCreate } from '@/types/conversation';
 
 export const conversationService = {
   /**
