@@ -6,33 +6,85 @@ FastAPI + React + OpenAI를 사용한 AI 프롬프트 대화 웹 애플리케이
 
 ```
 .
-├── backend/          # FastAPI 백엔드
+├── backend/                  # FastAPI 백엔드
 │   ├── app/
-│   │   ├── api/      # API 엔드포인트
-│   │   ├── core/     # 설정, 보안
-│   │   ├── models/   # 데이터베이스 모델
-│   │   ├── schemas/  # Pydantic 스키마
-│   │   └── services/ # 비즈니스 로직
-│   └── alembic/      # 데이터베이스 마이그레이션
-├── frontend/         # React + Vite 프론트엔드
-│   └── src/
-│       ├── components/  # React 컴포넌트
-│       ├── pages/       # 페이지 컴포넌트
-│       ├── services/    # API 서비스
-│       └── store/       # Zustand 상태 관리
-└── docker-compose.yml   # Docker Compose 설정
+│   │   ├── api/              # API 엔드포인트
+│   │   ├── constants/        # 상수 정의
+│   │   ├── core/             # 설정, 보안
+│   │   ├── models/           # 데이터베이스 모델
+│   │   ├── schemas/          # Pydantic 스키마
+│   │   └── services/         # 비즈니스 로직
+│   ├── alembic/              # 데이터베이스 마이그레이션
+│   ├── tests/                # 테스트 코드
+│   ├── Dockerfile            # DEV용 Dockerfile
+│   └── Dockerfile.prod       # PROD용 Dockerfile
+├── frontend/                 # React + Vite 프론트엔드
+│   ├── src/
+│   │   ├── components/       # React 컴포넌트
+│   │   ├── constants/        # 상수 정의
+│   │   ├── lib/              # 유틸리티 라이브러리
+│   │   ├── pages/            # 페이지 컴포넌트
+│   │   ├── services/         # API 서비스
+│   │   ├── store/            # Zustand 상태 관리
+│   │   └── types/            # TypeScript 타입 정의
+│   ├── Dockerfile            # DEV용 Dockerfile
+│   └── Dockerfile.prod       # PROD용 Dockerfile
+├── nginx/                    # PROD용 Nginx 설정
+│   ├── nginx.conf
+│   └── conf.d/default.conf
+├── docs/                     # 문서
+│   ├── INFRASTRUCTURE.md     # 인프라 가이드
+│   └── TROUBLESHOOTING.md    # 문제 해결 가이드
+├── docker-compose.yml        # DEV 환경 Docker Compose
+├── docker-compose.prod.yml   # PROD 환경 Docker Compose
+├── .env.example              # 환경변수 템플릿
+└── .env                      # 환경변수 (Git 미포함)
 ```
+
+---
+
+## DEV vs PROD 환경 비교 (신입 개발자 필독)
+
+| 항목 | DEV (개발) | PROD (운영) |
+|------|-----------|-------------|
+| **목적** | 개발자가 빠르게 코드 수정 및 테스트 | 실제 사용자에게 서비스 제공 |
+| **compose 파일** | `docker-compose.yml` | `docker-compose.prod.yml` |
+| **환경변수 파일** | `.env` | `.env.production` |
+| **DB 포트 노출** | 5432 외부 노출 (접근 가능) | 내부 네트워크만 (보안) |
+| **백엔드 워커** | 1개 (`--reload` 활성화) | 4개 (성능 최적화) |
+| **프론트엔드** | Vite dev server (HMR 지원) | Nginx + 빌드된 정적 파일 |
+| **HTTPS** | 없음 | Cloudflare Tunnel 자동 제공 |
+| **자동 재시작** | 없음 | `unless-stopped` |
+| **코드 변경 반영** | 즉시 (볼륨 마운트) | 재빌드 필요 |
+
+---
 
 ## 시작하기
 
 ### 1. 환경 변수 설정
 
-프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
+프로젝트 루트에 `.env` 파일을 생성하세요:
+
+```bash
+cp .env.example .env
+```
+
+필수 환경변수:
 
 ```env
-SECRET_KEY=your-secret-key-change-in-production-use-a-secure-random-string
-OPEN_AI_KEY=your-openai-api-key-here
-TAVILY_API_KEY=your-tavily-api-key-here  # 선택적: 웹 검색 기능 사용 시 필요
+# OpenAI API (필수)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Tavily Search API (선택 - 웹 검색 기능용)
+TAVILY_API_KEY=tvly-your-tavily-api-key-here
+
+# 데이터베이스 설정
+DB_USER=postgres
+DB_PASSWORD=your-secure-database-password
+DB_NAME=ai_prompt_db
+
+# 보안 설정 (시크릿 키 생성: python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+SECRET_KEY=your-secret-key-generate-new-one
 ```
 
 **Tavily API Key 발급 방법:**
@@ -42,10 +94,17 @@ TAVILY_API_KEY=your-tavily-api-key-here  # 선택적: 웹 검색 기능 사용 �
 3. API Key를 발급받아 `.env` 파일에 추가
 4. API Key가 없어도 기본 AI 기능은 정상 작동 (검색 기능만 비활성화)
 
-### 2. Docker Compose로 실행
+### 2. Docker Compose로 실행 (DEV 환경)
 
 ```bash
+# 빌드 후 실행
 docker-compose up --build
+
+# 백그라운드 실행
+docker-compose up --build -d
+
+# 종료
+docker-compose down
 ```
 
 이 명령은 다음을 실행합니다:
@@ -54,7 +113,7 @@ docker-compose up --build
 - FastAPI 백엔드 (포트 8000)
 - React 프론트엔드 (포트 5173)
 
-### 3. 접속
+### 3. 접속 (DEV 환경)
 
 - 프론트엔드: http://localhost:5173
 - 백엔드 API: http://localhost:8000
@@ -179,6 +238,77 @@ docker-compose exec backend pytest tests/ -v
 - Zustand
 - TanStack Query
 - React Router
+
+---
+
+## 자주 쓰는 명령어 모음
+
+### DEV 환경
+
+```bash
+# 빌드 후 실행
+docker-compose up --build
+
+# 백그라운드 실행
+docker-compose up -d
+
+# 종료
+docker-compose down
+
+# 특정 서비스 로그 확인
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# 백엔드 컨테이너 접속
+docker-compose exec backend bash
+
+# 백엔드만 재시작
+docker-compose restart backend
+
+# 볼륨까지 삭제 (DB 초기화)
+docker-compose down -v
+```
+
+### PROD 환경
+
+```bash
+# 빌드 및 실행
+docker-compose -f docker-compose.prod.yml --env-file .env.production up --build -d
+
+# 상태 확인
+docker-compose -f docker-compose.prod.yml ps
+
+# 로그 확인
+docker-compose -f docker-compose.prod.yml logs -f
+docker-compose -f docker-compose.prod.yml logs -f nginx
+docker-compose -f docker-compose.prod.yml logs -f backend
+
+# 종료
+docker-compose -f docker-compose.prod.yml down
+```
+
+### 문제 해결
+
+```bash
+# 사용 안하는 이미지 정리
+docker system prune -a
+
+# 캐시 없이 새로 빌드
+docker-compose build --no-cache
+
+# 모든 컨테이너 상태 확인
+docker ps -a
+```
+
+---
+
+## 신입 개발자가 꼭 기억할 것
+
+1. **절대로 `.env.production` 파일을 Git에 커밋하지 마세요** (`.gitignore`에 포함되어 있음)
+2. **DEV 환경에서 충분히 테스트 후 PROD에 배포하세요**
+3. **PROD 배포 전 `docker-compose.prod.yml` 변경사항을 반드시 검토하세요**
+4. **문제 발생시 `docker-compose logs`로 로그부터 확인하세요**
+5. **API 키(OpenAI, Tavily 등)는 절대 코드에 하드코딩하지 마세요**
 
 ---
 
